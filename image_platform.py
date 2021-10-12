@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
-from tkinter.constants import BOTTOM, S  # 獲取文件全路徑
 from PIL import Image, ImageTk
+import matplotlib.pyplot as plt
 
 
 class ImagePlatform():
@@ -36,6 +36,16 @@ class ImagePlatform():
 
         save_buttom.grid(column=1, row=2, sticky="NS")
 
+        gray_pricture_buttom = tk.Button(self.window, text='轉為灰階圖',
+                                         command=self.__output_to_gray, bg="white", fg='#0f506d', font=('Courier', 16), width=10, height=1)
+
+        gray_pricture_buttom.grid(column=1, row=3, sticky="NS")
+
+        gray_histogram_buttom = tk.Button(self.window, text='灰階直方圖',
+                                          command=self.__output_to_gray_histogram, bg="white", fg='#0f506d', font=('Courier', 16), width=10, height=1)
+
+        gray_histogram_buttom.grid(column=1, row=4, sticky="NS")
+
     def __title_init(self):
         input_image_text = tk.Label(
             self.window, text='input image:', image=None, bg="#0f506d", fg='white', font=('Courier', 16))
@@ -58,7 +68,7 @@ class ImagePlatform():
         self.output_image_show.grid(column=2, row=2, rowspan=100)  # 放置標籤
 
     def __open_picture(self):
-        global input_image_tk, output_image_tk
+        global input_image_tk
         filename = filedialog.askopenfilename(
             title='選擇圖片',
             filetypes=[
@@ -70,15 +80,22 @@ class ImagePlatform():
         )  # 獲取文件全路徑
         # tkinter只能打開gif文件，這裏用PIL庫
         input_image = Image.open(filename)
-        self.input_image = self.__resize(input_image)
-        self.output_image = self.input_image
+        input_image = self.__resize(input_image)
 
-        input_image_tk = ImageTk.PhotoImage(self.input_image)
-        output_image_tk = ImageTk.PhotoImage(self.output_image)
+        self.__set_input_image_to_label(input_image)
+        self.__set_output_image_to_label(input_image)
 
-        # 打開jpg格式的文件
+    def __set_input_image_to_label(self, image):
+        global input_image_tk
+        self.input_image = image
+        input_image_tk = ImageTk.PhotoImage(image)
         self.input_image_show.config(
             image=input_image_tk)  # 用config方法將圖片放置在標籤中
+
+    def __set_output_image_to_label(self, image):
+        global output_image_tk
+        self.output_image = image
+        output_image_tk = ImageTk.PhotoImage(image)
         self.output_image_show.config(
             image=output_image_tk)  # 用config方法將圖片放置在標籤中
 
@@ -89,15 +106,34 @@ class ImagePlatform():
             ("ppm files", "*.ppm"),
             ('bmp Files', "*.bmp")
         ]
-        filename = filedialog.asksaveasfile(mode='wb+',
-                                            filetypes=files,
-                                            defaultextension=files)
+        filename = filedialog.asksaveasfile(
+            title='儲存圖片',
+            mode='wb+',
+            filetypes=files,
+            defaultextension=files
+        )
 
         self.output_image.save(filename)
 
+    def __output_to_gray(self):
+        self.__set_output_image_to_label(self.input_image.convert('L'))
+
+    def __output_to_gray_histogram(self):
+        temp_input_image = self.input_image.convert('L')
+        ouput_image_histogram = temp_input_image.histogram()
+
+        plt.bar(list(range(256)), ouput_image_histogram)
+        plt.title("Image Histogram")
+        plt.xlabel("gray level")
+        plt.ylabel("frequency")
+        plt.savefig("gray_histogram.jpg")
+        plt.close()
+
+        self.__set_output_image_to_label(Image.open('gray_histogram.jpg'))
+
     def __resize(self, image):
         [image_width, image_height] = image.size
-        print(image_width, image_height)
+
         if image_width > self.max_image_width and image_height > self.max_image_height:
             if image_width > image_height:
                 image_width, image_height = self.__resize_with_width(
@@ -115,7 +151,7 @@ class ImagePlatform():
                 image_width, image_height)
 
         image = image.resize((image_width, image_height), Image.ANTIALIAS)
-        print(image_width, image_height)
+
         return image
 
     def __resize_with_width(self, image_width, image_height):

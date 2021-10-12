@@ -130,3 +130,5 @@ dmypy.json
 
 image/
 docs/
+submit/
+*.jpg
