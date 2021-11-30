@@ -3,9 +3,10 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 from numpy import array, arange
-from math import ceil
+from math import log, ceil
 
 from noise_generator import generation_additive_zero_mean_Gaussian_noise
+from wavelet_transform import wave_transform
 
 
 class ImagePlatform():
@@ -50,6 +51,7 @@ class ImagePlatform():
 
         gray_histogram_buttom.grid(column=1, row=4, sticky="NS")
 
+        # 高斯雜訊
         gaussian_noise_sd_label = tk.Label(
             self.window, text="請輸入標準差:\n(範圍為0~1)", bg="#fbf2e2", font=('微軟正黑體', 14))
         gaussian_noise_sd_label.grid(column=1, row=5, sticky="NS")
@@ -65,6 +67,26 @@ class ImagePlatform():
                                           command=self.__output_guassian_noise, bg="white", fg='#0f506d', font=('微軟正黑體', 16), width=10, height=1)
 
         gaussian_noise_buttom.grid(column=1, row=7, sticky="NS")
+
+        # 小波轉換
+        self.layer_text = tk.StringVar()
+        self.layer_text.set("請輸入小波轉換之層數:\n(範圍0~0)")
+
+        wave_transform_layer_label = tk.Label(
+            self.window, textvariable=self.layer_text, bg="#fbf2e2", font=('微軟正黑體', 14))
+        wave_transform_layer_label.grid(column=1, row=8, sticky="NS")
+
+        self.wave_transform_layer = tk.IntVar()
+        self.wave_transform_layer.set(1)
+
+        wave_transform_layer_entry = tk.Entry(
+            self.window, textvariable=self.wave_transform_layer, width=15)
+        wave_transform_layer_entry.grid(column=1, row=9, sticky="NS")
+
+        wave_transform_buttom = tk.Button(self.window, text='小波轉換',
+                                          command=self.__output_wavelet_transform, bg="white", fg='#0f506d', font=('微軟正黑體', 16), width=10, height=1)
+
+        wave_transform_buttom.grid(column=1, row=10, sticky="NS")
 
     def __title_init(self):
         input_image_text = tk.Label(
@@ -118,6 +140,11 @@ class ImagePlatform():
         self.__set_first_output_image_to_label(self.original_input_image)
 
         self.__release_second_image()
+
+        # 小波轉換的 text 要根據讀入的圖片修改
+        width, height = self.input_image.size
+        max_layer = min(ceil(log(width, 2)), ceil(log(height, 2)))
+        self.layer_text.set(f"請輸入小波轉換之層數:\n(範圍1~{max_layer})")
 
     def __set_first_input_image_to_label(self, image):
         global input_image_tk
@@ -236,6 +263,35 @@ class ImagePlatform():
         self.__set_second_output_image_to_label(histogram_image)
 
         self.max_image_height = 850
+
+    def __output_wavelet_transform(self):
+        wave_transform_layer = self.wave_transform_layer.get()
+
+        image = self.input_image
+        image = self.convert_image_to_2(image)
+
+        image_array = wave_transform(wave_transform_layer, array(
+            image.convert('L')))
+
+        wave_transform_image = Image.fromarray(image_array)
+        wave_transform_image = self.__resize(wave_transform_image)
+
+        if wave_transform_image.mode != 'RGB':
+            wave_transform_image = wave_transform_image.convert('RGB')
+        self.__set_first_output_image_to_label(wave_transform_image)
+
+    def convert_image_to_2(self, image):
+        # 將長寬轉換為 2 的倍數
+        width, height = image.size
+
+        new_image_width = 2 ** ceil(log(width, 2))
+        new_image_height = 2 ** ceil(log(height, 2))
+
+        new_image = Image.new(
+            "RGB", (new_image_width, new_image_height), (127, 127, 127))
+        box = ((new_image_width-width)//2, (new_image_height-height)//2)
+        new_image.paste(image, box)
+        return new_image
 
     def __release_second_image(self):
         self.second_input_image_label.config(image='')
